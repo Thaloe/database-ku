@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DatabaseKu - Kelola & Buat Database Anda Tanpa Ribet</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel Standalone for JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(107, 114, 128, 0.7);
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+  <div id="root" class="h-full"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- STARTER TEMPLATES & DEFAULT DATA ---
+    const STARTER_TEMPLATES = [
+      {
+        id: 'kontak_relasi',
+        name: 'Kontak & Relasi',
+        icon: 'fa-address-book',
+        description: 'Daftar relasi bisnis, klien, vendor, dan tim internal.',
+        columns: [
+          { id: 'nama', label: 'Nama Lengkap', type: 'Teks', required: true },
+          { id: 'email', label: 'Email', type: 'Email', required: true },
+          { id: 'telepon', label: 'No. Telepon', type: 'Telepon', required: false },
+          { id: 'kategori', label: 'Kategori', type: 'Pilihan', options: ['Klien', 'Vendor', 'Tim', 'Mitra'], required: true },
+          { id: 'status', label: 'Status', type: 'Status', options: ['Aktif', 'Prospek', 'Nonaktif'], required: true },
+          { id: 'tanggal_kontak', label: 'Tanggal Kontak', type: 'Tanggal', required: false },
+          { id: 'foto', label: 'Foto Avatar URL', type: 'URL Gambar', required: false }
+        ],
+        rows: [
+          { id: 'row-1', nama: 'Budi Santoso', email: 'budi@techindo.co.id', telepon: '081234567890', kategori: 'Klien', status: 'Aktif', tanggal_kontak: '2026-10-15', foto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' },
+          { id: 'row-2', nama: 'Siti Rahma', email: 'siti@vendorjaya.com', telepon: '081987654321', kategori: 'Vendor', status: 'Aktif', tanggal_kontak: '2026-10-20', foto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' },
+          { id: 'row-3', nama: 'Ahmad Rizki', email: 'ahmad@databaseku.id', telepon: '085611223344', kategori: 'Tim', status: 'Aktif', tanggal_kontak: '2026-10-01', foto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
+          { id: 'row-4', nama: 'Dewi Lestari', email: 'dewi@megahcorp.com', telepon: '087799887766', kategori: 'Klien', status: 'Prospek', tanggal_kontak: '2026-10-24', foto: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150' }
+        ]
+      },
+      {
+        id: 'inventaris_barang',
+        name: 'Inventaris Barang',
+        icon: 'fa-boxes-stacked',
+        description: 'Pencatatan stok produk, SKU, dan harga satuan.',
+        columns: [
+          { id: 'nama_produk', label: 'Nama Produk', type: 'Teks', required: true },
+          { id: 'sku', label: 'Kode SKU', type: 'Teks', required: true },
+          { id: 'kategori', label: 'Kategori Produk', type: 'Pilihan', options: ['Elektronik', 'Aksesoris', 'Mebel', 'Pakaian'], required: true },
+          { id: 'stok', label: 'Jumlah Stok', type: 'Angka', required: true },
+          { id: 'harga', label: 'Harga Satuan (Rp)', type: 'Angka', required: true },
+          { id: 'status', label: 'Status Stok', type: 'Status', options: ['Tersedia', 'Penjualan Tinggi', 'Habis', 'Menunggu Stok'], required: true },
+          { id: 'gambar', label: 'Foto Produk URL', type: 'URL Gambar', required: false }
+        ],
+        rows: [
+          { id: 'inv-1', nama_produk: 'Laptop Pro 14 Inch', sku: 'SK-LTP-001', kategori: 'Elektronik', stok: 24, harga: 18500000, status: 'Penjualan Tinggi', gambar: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200' },
+          { id: 'inv-2', nama_produk: 'Mouse Wireless Ergonomis', sku: 'SK-MSE-012', kategori: 'Aksesoris', stok: 85, harga: 350000, status: 'Tersedia', gambar: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=200' },
+          { id: 'inv-3', nama_produk: 'Keyboard Mekanikal RGB', sku: 'SK-KBD-009', kategori: 'Aksesoris', stok: 0, harga: 1200000, status: 'Habis', gambar: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=200' },
+          { id: 'inv-4', nama_produk: 'Monitor Curved 27 Inch', sku: 'SK-MNT-004', kategori: 'Elektronik', stok: 12, harga: 4200000, status: 'Tersedia', gambar: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=200' }
+        ]
+      },
+      {
+        id: 'manajemen_proyek',
+        name: 'Manajemen Proyek',
+        icon: 'fa-list-check',
+        description: 'Pelacakan tugas tim, prioritas, deadline, dan progress.',
+        columns: [
+          { id: 'judul_tugas', label: 'Judul Tugas', type: 'Teks', required: true },
+          { id: 'penanggung_jawab', label: 'Penanggung Jawab', type: 'Teks', required: true },
+          { id: 'prioritas', label: 'Prioritas', type: 'Pilihan', options: ['Tinggi', 'Sedang', 'Rendah'], required: true },
+          { id: 'deadline', label: 'Tenggat Waktu', type: 'Tanggal', required: false },
+          { id: 'status', label: 'Status Progress', type: 'Status', options: ['Belum Mulai', 'Berjalan', 'Review', 'Selesai'], required: true },
+          { id: 'selesai', label: 'Verified Complete', type: 'Checklist', required: false }
+        ],
+        rows: [
+          { id: 'task-1', judul_tugas: 'Redesign Landing Page DatabaseKu', penanggung_jawab: 'Ahmad Rizki', prioritas: 'Tinggi', deadline: '2026-11-05', status: 'Berjalan', selesai: false },
+          { id: 'task-2', judul_tugas: 'Integrasi API Payment Gateway', penanggung_jawab: 'Budi Santoso', prioritas: 'Tinggi', deadline: '2026-11-12', status: 'Belum Mulai', selesai: false },
+          { id: 'task-3', judul_tugas: 'Testing & Bug Fixing Analytics Module', penanggung_jawab: 'Siti Rahma', prioritas: 'Sedang', deadline: '2026-10-30', status: 'Review', selesai: false },
+          { id: 'task-4', judul_tugas: 'Backup Database Server Bulanan', penanggung_jawab: 'Admin System', prioritas: 'Rendah', deadline: '2026-10-25', status: 'Selesai', selesai: true }
+        ]
+      }
+    ];
+
+    // Helper functions for badge colors
+    function getBadgeStyle(val) {
+      if (!val) return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+      const str = String(val).toLowerCase();
+      if (['aktif', 'tersedia', 'selesai', 'lunas', 'tinggi', 'klien'].includes(str)) {
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
+      }
+      if (['habis', 'nonaktif', 'dibatalkan', 'rendah', 'tunggakan'].includes(str)) {
+        return 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800';
+      }
+      if (['prospek', 'berjalan', 'penjualan tinggi', 'sedang', 'review', 'menunggu stok'].includes(str)) {
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+      }
+      if (['vendor', 'tim', 'mitra', 'elektronik', 'aksesoris', 'belum mulai'].includes(str)) {
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800';
+      }
+      return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700';
+    }
+
+    // --- MAIN APP COMPONENT ---
+    function App() {
+      // Theme State
+      const [darkMode, setDarkMode] = useState(() => {
+        return localStorage.getItem('databaseku_theme') === 'dark' || 
+          (!('databaseku_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      });
+
+      // Databases State
+      const [tables, setTables] = useState(() => {
+        const saved = localStorage.getItem('databaseku_v1_tables');
+        if (saved) {
+          try { return JSON.parse(saved); } catch (e) { console.error(e); }
+        }
+        return STARTER_TEMPLATES;
+      });
+
+      // Navigation & Active View State
+      const [activeNav, setActiveNav] = useState('tables'); // 'dashboard', 'tables', 'analytics', 'settings'
+      const [activeTableId, setActiveTableId] = useState(() => tables[0]?.id || 'kontak_relasi');
+      const [viewMode, setViewMode] = useState('table'); // 'table', 'card', 'kanban'
+      const [globalSearch, setGlobalSearch] = useState('');
+      const [tableSearch, setTableSearch] = useState('');
+      
+      // Selection & Modals State
+      const [selectedRowIds, setSelectedRowIds] = useState([]);
+      const [isSchemaModalOpen, setIsSchemaModalOpen] = useState(false);
+      const [editingTableSchema, setEditingTableSchema] = useState(null); // null = new table, obj = edit
+      const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+      const [editingRecord, setEditingRecord] = useState(null); // null = new record
+      const [detailRecord, setDetailRecord] = useState(null);
+      const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+      const [isExportImportModalOpen, setIsExportImportModalOpen] = useState(false);
+      const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+      // Toast Notification System
+      const [toast, setToast] = useState(null);
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+      };
+
+      // Theme Sync
+      useEffect(() => {
+        if (darkMode) {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('databaseku_theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('databaseku_theme', 'light');
+        }
+      }, [darkMode]);
+
+      // Persistence Sync
+      useEffect(() => {
+        localStorage.setItem('databaseku_v1_tables', JSON.stringify(tables));
+      }, [tables]);
+
+      // Active Table Selector safely
+      const activeTable = useMemo(() => {
+        return tables.find(t => t.id === activeTableId) || tables[0];
+      }, [tables, activeTableId]);
+
+      // Ensure activeTableId remains valid if tables change
+      useEffect(() => {
+        if (!activeTable && tables.length > 0) {
+          setActiveTableId(tables[0].id);
+        }
+      }, [tables, activeTable]);
+
+      // Clear row selection when table changes
+      useEffect(() => {
+        setSelectedRowIds([]);
+        setTableSearch('');
+      }, [activeTableId]);
+
+      // CRUD Helpers for Tables
+      const handleSaveTableSchema = (schemaData) => {
+        if (editingTableSchema) {
+          // Update existing schema
+          setTables(prev => prev.map(t => t.id === schemaData.id ? { ...t, ...schemaData } : t));
+          showToast(`Skema tabel "${schemaData.name}" berhasil diperbarui!`);
+        } else {
+          // Create new table
+          const newTable = {
+            ...schemaData,
+            id: 'tbl_' + Date.now(),
+            rows: []
+          };
+          setTables(prev => [...prev, newTable]);
+          setActiveTableId(newTable.id);
+          showToast(`Tabel baru "${schemaData.name}" berhasil dibuat!`);
+        }
+        setIsSchemaModalOpen(false);
+        setEditingTableSchema(null);
+      };
+
+      const handleDeleteTable = (tableId) => {
+        const tbl = tables.find(t => t.id === tableId);
+        if (confirm(`Apakah Anda yakin ingin menghapus seluruh tabel "${tbl?.name}" beserta semua datanya?`)) {
+          const filtered = tables.filter(t => t.id !== tableId);
+          setTables(filtered);
+          if (filtered.length > 0) {
+            setActiveTableId(filtered[0].id);
+          }
+          showToast(`Tabel "${tbl?.name}" telah dihapus.`, 'warning');
+        }
+      };
+
+      // CRUD Helpers for Records
+      const handleSaveRecord = (recordData) => {
+        if (!activeTable) return;
+        setTables(prev => prev.map(t => {
+          if (t.id === activeTable.id) {
+            if (editingRecord) {
+              // Update
+              const updatedRows = t.rows.map(r => r.id === recordData.id ? recordData : r);
+              return { ...t, rows: updatedRows };
+            } else {
+              // Create
+              const newRow = { ...recordData, id: 'row_' + Date.now() };
+              return { ...t, rows: [newRow, ...t.rows] };
+            }
+          }
+          return t;
+        }));
+        showToast(editingRecord ? 'Data berhasil diperbarui!' : 'Data baru berhasil ditambahkan!');
+        setIsRecordModalOpen(false);
+        setEditingRecord(null);
+      };
+
+      const handleDeleteRecord = (rowId) => {
+        if (!activeTable) return;
+        setTables(prev => prev.map(t => {
+          if (t.id === activeTable.id) {
+            return { ...t, rows: t.rows.filter(r => r.id !== rowId) };
+          }
+          return t;
+        }));
+        setSelectedRowIds(prev => prev.filter(id => id !== rowId));
+        showToast('Entry data dihapus.', 'info');
+      };
+
+      const handleBulkDeleteRecords = () => {
+        if (selectedRowIds.length === 0 || !activeTable) return;
+        if (confirm(`Hapus ${selectedRowIds.length} data terpilih?`)) {
+          setTables(prev => prev.map(t => {
+            if (t.id === activeTable.id) {
+              return { ...t, rows: t.rows.filter(r => !selectedRowIds.includes(r.id)) };
+            }
+            return t;
+          }));
+          setSelectedRowIds([]);
+          showToast(`${selectedRowIds.length} data terpilih berhasil dihapus.`, 'info');
+        }
+      };
+
+      const handleResetToDefault = () => {
+        if (confirm('Aksi ini akan mengembalikan database ke template awal dan menghapus perubahan Anda. Lanjutkan?')) {
+          setTables(STARTER_TEMPLATES);
+          setActiveTableId(STARTER_TEMPLATES[0].id);
+          localStorage.removeItem('databaseku_v1_tables');
+          showToast('Database berhasil di-reset ke data bawaan!', 'info');
+        }
+      };
+
+      // Load Template
+      const handleLoadTemplate = (template) => {
+        const existing = tables.find(t => t.id === template.id);
+        if (existing) {
+          if (!confirm(`Tabel "${template.name}" sudah ada. Timpa dengan template baru?`)) return;
+          setTables(prev => prev.map(t => t.id === template.id ? template : t));
+        } else {
+          setTables(prev => [...prev, template]);
+        }
+        setActiveTableId(template.id);
+        setIsTemplateModalOpen(false);
+        showToast(`Template "${template.name}" berhasil ditambahkan!`);
+      };
+
+      return (
+        <div className="flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+          
+          {/* TOAST NOTIFICATION */}
+          {toast && (
+            <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-white font-medium bg-slate-900 dark:bg-slate-800 border border-slate-700 animate-bounce">
+              <i className={`fa-solid ${toast.type === 'warning' ? 'fa-triangle-exclamation text-amber-400' : toast.type === 'info' ? 'fa-circle-info text-sky-400' : 'fa-circle-check text-emerald-400'} text-lg`}></i>
+              <span>{toast.message}</span>
+            </div>
+          )}
+
+          {/* HEADER */}
+          <header className="h-16 px-4 md:px-6 bg-white dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700/80 flex items-center justify-between shrink-0 z-20">
+            {/* Left Branding */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)} 
+                className="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+              >
+                <i className="fa-solid fa-bars text-lg"></i>
+              </button>
+              
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-brand-500/20">
+                  <i className="fa-solid fa-database text-lg"></i>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">DatabaseKu</span>
+                    <span className="text-[10px] font-semibold tracking-wide bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300 px-2 py-0.5 rounded-full border border-brand-200 dark:border-brand-800">
+                      v1.0
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Kelola & Buat Database Anda Tanpa Ribet</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Search */}
+            <div className="hidden md:flex items-center relative w-64 lg:w-80">
+              <i className="fa-solid fa-magnifying-glass absolute left-3 text-slate-400 text-sm"></i>
+              <input
+                type="text"
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                placeholder="Cari cepat semua tabel & data..."
+                className="w-full pl-9 pr-4 py-1.5 text-sm rounded-lg bg-slate-100 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+              />
+              {globalSearch && (
+                <button onClick={() => setGlobalSearch('')} className="absolute right-3 text-slate-400 hover:text-slate-600">
+                  <i className="fa-solid fa-xmark text-xs"></i>
+                </button>
+              )}
+            </div>
+
+            {/* Action Controls */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => { setEditingTableSchema(null); setIsSchemaModalOpen(true); }}
+                className="hidden sm:flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow-sm"
+              >
+                <i className="fa-solid fa-plus"></i>
+                <span>+ Tabel Baru</span>
+              </button>
+
+              <button
+                onClick={() => setIsTemplateModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+                title="Starter Templates"
+              >
+                <i className="fa-solid fa-cubes text-brand-500"></i>
+                <span className="hidden sm:inline">Template</span>
+              </button>
+
+              <button
+                onClick={() => setIsExportImportModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+                title="Import / Export Data"
+              >
+                <i className="fa-solid fa-file-arrow-up-down text-indigo-500"></i>
+                <span className="hidden sm:inline">Import/Export</span>
+              </button>
+
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+                title="Toggle Mode Terang/Gelap"
+              >
+                <i className={`fa-solid ${darkMode ? 'fa-sun text-amber-400' : 'fa-moon text-indigo-600'}`}></i>
+              </button>
+            </div>
+          </header>
+
+          {/* MAIN CONTAINER */}
+          <div className="flex flex-1 overflow-hidden relative">
+            
+            {/* SIDEBAR NAVIGATION */}
+            <aside className={`
+              absolute md:static top-0 left-0 bottom-0 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700/80 
+              flex flex-col z-30 transition-transform duration-300
+              ${mobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}
+            `}>
+              
+              {/* Main Nav Items */}
+              <div className="p-3 space-y-1">
+                <button
+                  onClick={() => { setActiveNav('dashboard'); setMobileSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+                    activeNav === 'dashboard' 
+                      ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300 font-semibold' 
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <i className="fa-solid fa-chart-line text-sm text-brand-500 w-4"></i>
+                  <span>Dashboard Overview</span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveNav('tables'); setMobileSidebarOpen(false); }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+                    activeNav === 'tables' 
+                      ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300 font-semibold' 
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <i className="fa-solid fa-table text-sm text-indigo-500 w-4"></i>
+                    <span>Semua Tabel</span>
+                  </div>
+                  <span className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {tables.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveNav('analytics'); setMobileSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+                    activeNav === 'analytics' 
+                      ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300 font-semibold' 
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                  }`}
+                >
+                  <i className="fa-solid fa-chart-pie text-sm text-emerald-500 w-4"></i>
+                  <span>Visualisasi & Analytics</span>
+                </button>
+              </div>
+
+              <div className="my-2 border-t border-slate-100 dark:border-slate-700/60"></div>
+
+              {/* Workspace Tables List */}
+              <div className="px-4 py-2 flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  WORKSPACE TABEL
+                </span>
+                <button 
+                  onClick={() => { setEditingTableSchema(null); setIsSchemaModalOpen(true); }}
+                  className="text-slate-400 hover:text-brand-600 text-xs"
+                  title="Tambah Tabel"
+                >
+                  <i className="fa-solid fa-plus"></i>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-3 space-y-1">
+                {tables.map(table => {
+                  const isActive = activeNav === 'tables' && activeTableId === table.id;
+                  return (
+                    <div 
+                      key={table.id}
+                      onClick={() => {
+                        setActiveTableId(table.id);
+                        setActiveNav('tables');
+                        setMobileSidebarOpen(false);
+                      }}
+                      className={`group flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition ${
+                        isActive 
+                          ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' 
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <i className={`fa-solid ${table.icon || 'fa-table'} ${isActive ? 'text-white' : 'text-slate-400'} text-sm`}></i>
+                        <span className="truncate">{table.name}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                        }`}>
+                          {table.rows.length}
+                        </span>
+
+                        {/* Quick options menu on hover */}
+                        <div className="hidden group-hover:flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTableSchema(table);
+                              setIsSchemaModalOpen(true);
+                            }}
+                            className={`p-1 rounded hover:bg-black/10 ${isActive ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                            title="Edit Skema Tabel"
+                          >
+                            <i className="fa-solid fa-pen text-[10px]"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Sidebar Footer / Quick Reset */}
+              <div className="p-3 border-t border-slate-200 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-800/50">
+                <button
+                  onClick={handleResetToDefault}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                  title="Kembalikan Database Awal"
+                >
+                  <i className="fa-solid fa-rotate-left"></i>
+                  <span>Reset Database Default</span>
+                </button>
+              </div>
+
+            </aside>
+
+            {/* BACKDROP FOR MOBILE SIDEBAR */}
+            {mobileSidebarOpen && (
+              <div 
+                onClick={() => setMobileSidebarOpen(false)}
+                className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-20 md:hidden"
+              ></div>
+            )}
+
+            {/* CONTENT AREA */}
+            <main className="flex-1 overflow-y-auto flex flex-col bg-slate-50 dark:bg-slate-900/50">
+              
+              {/* GLOBAL SEARCH RESULTS OVERLAY IF SEARCH ACTIVE */}
+              {globalSearch ? (
+                <GlobalSearchResults 
+                  query={globalSearch} 
+                  tables={tables}
+                  onSelectRecord={(tableId, record) => {
+                    setActiveTableId(tableId);
+                    setActiveNav('tables');
+                    setDetailRecord(record);
+                    setGlobalSearch('');
+                  }}
+                />
+              ) : (
+                <>
+                  {activeNav === 'dashboard' && (
+                    <DashboardOverview 
+                      tables={tables} 
+                      onSelectTable={(id) => { setActiveTableId(id); setActiveNav('tables'); }}
+                      onNewTable={() => { setEditingTableSchema(null); setIsSchemaModalOpen(true); }}
+                      onOpenTemplates={() => setIsTemplateModalOpen(true)}
+                    />
+                  )}
+
+                  {activeNav === 'tables' && activeTable && (
+                    <ActiveTableView 
+                      table={activeTable}
+                      viewMode={viewMode}
+                      setViewMode={setViewMode}
+                      tableSearch={tableSearch}
+                      setTableSearch={setTableSearch}
+                      selectedRowIds={selectedRowIds}
+                      setSelectedRowIds={setSelectedRowIds}
+                      onAddRecord={() => { setEditingRecord(null); setIsRecordModalOpen(true); }}
+                      onEditRecord={(record) => { setEditingRecord(record); setIsRecordModalOpen(true); }}
+                      onDetailRecord={(record) => setDetailRecord(record)}
+                      onDeleteRecord={handleDeleteRecord}
+                      onBulkDelete={handleBulkDeleteRecords}
+                      onEditSchema={() => { setEditingTableSchema(activeTable); setIsSchemaModalOpen(true); }}
+                      onDeleteTable={() => handleDeleteTable(activeTable.id)}
+                    />
+                  )}
+
+                  {activeNav === 'analytics' && (
+                    <AnalyticsView tables={tables} activeTableId={activeTableId} setActiveTableId={setActiveTableId} />
+                  )}
+                </>
+              )}
+
+            </main>
+
+          </div>
+
+          {/* SCHEMA BUILDER MODAL */}
+          {isSchemaModalOpen && (
+            <SchemaModal
+              table={editingTableSchema}
+              onClose={() => { setIsSchemaModalOpen(false); setEditingTableSchema(null); }}
+              onSave={handleSaveTableSchema}
+            />
+          )}
+
+          {/* RECORD CREATE / EDIT MODAL */}
+          {isRecordModalOpen && activeTable && (
+            <RecordModal
+              table={activeTable}
+              record={editingRecord}
+              onClose={() => { setIsRecordModalOpen(false); setEditingRecord(null); }}
+              onSave={handleSaveRecord}
+            />
+          )}
+
+          {/* RECORD DETAIL VIEW MODAL */}
+          {detailRecord && activeTable && (
+            <RecordDetailModal
+              table={activeTable}
+              record={detailRecord}
+              onClose={() => setDetailRecord(null)}
+              onEdit={() => {
+                setEditingRecord(detailRecord);
+                setDetailRecord(null);
+                setIsRecordModalOpen(true);
+              }}
+              onDelete={() => {
+                handleDeleteRecord(detailRecord.id);
+                setDetailRecord(null);
+              }}
+            />
+          )}
+
+          {/* STARTER TEMPLATES MODAL */}
+          {isTemplateModalOpen && (
+            <TemplateModal
+              templates={STARTER_TEMPLATES}
+              onClose={() => setIsTemplateModalOpen(false)}
+              onSelect={handleLoadTemplate}
+            />
+          )}
+
+          {/* IMPORT / EXPORT MODAL */}
+          {isExportImportModalOpen && (
+            <ExportImportModal
+              tables={tables}
+              activeTable={activeTable}
+              onClose={() => setIsExportImportModalOpen(false)}
+              onImportTable={(newTable) => {
+                setTables(prev => [...prev, newTable]);
+                setActiveTableId(newTable.id);
+                showToast(`Data berhasil di-import ke tabel "${newTable.name}"!`);
+              }}
+            />
+          )}
+
+        </div>
+      );
+    }
+
+    // --- DASHBOARD OVERVIEW COMPONENT ---
+    function DashboardOverview({ tables, onSelectTable, onNewTable, onOpenTemplates }) {
+      const totalRecords = useMemo(() => tables.reduce((acc, t) => acc + t.rows.length, 0), [tables]);
+      
+      return (
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+          {/* Welcome Banner */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 p-6 sm:p-8 text-white shadow-xl">
+            <div className="relative z-10 space-y-2 max-w-2xl">
+              <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-xs">
+                Visual Database Builder
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Selamat Datang di DatabaseKu!</h1>
+              <p className="text-sm sm:text-base text-brand-100">
+                Kelola data bisnis, kontak, inventaris, atau tugas proyek Anda tanpa penulisan kueri rumit. Visual, cepat, dan sepenuhnya otomatis!
+              </p>
+              <div className="pt-2 flex flex-wrap gap-3">
+                <button onClick={onNewTable} className="bg-white text-brand-700 font-semibold px-4 py-2 rounded-xl text-xs hover:bg-slate-100 transition shadow-md">
+                  <i className="fa-solid fa-plus mr-1.5"></i> Buat Tabel Kustom
+                </button>
+                <button onClick={onOpenTemplates} className="bg-brand-700/60 hover:bg-brand-700 text-white border border-white/30 font-semibold px-4 py-2 rounded-xl text-xs transition">
+                  <i className="fa-solid fa-cubes mr-1.5"></i> Jelajahi Template
+                </button>
+              </div>
+            </div>
+            {/* Background Decorative Icon */}
+            <i className="fa-solid fa-database absolute -right-6 -bottom-8 text-[180px] text-white/10 pointer-events-none"></i>
+          </div>
+
+          {/* Quick Metrics Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-300 flex items-center justify-center text-xl shrink-0">
+                <i className="fa-solid fa-table"></i>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total Tabel</p>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{tables.length}</h3>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center text-xl shrink-0">
+                <i className="fa-solid fa-list-check"></i>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total Entry Data</p>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white">{totalRecords}</h3>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-xl shrink-0">
+                <i className="fa-solid fa-[#fa-hard-drive] fa-hard-drive"></i>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Penyimpanan</p>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white">Lokal (Auto)</h3>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 flex items-center justify-center text-xl shrink-0">
+                <i className="fa-solid fa-clock-rotate-left"></i>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Status Sync</p>
+                <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <i className="fa-solid fa-circle text-[8px]"></i> Realtime
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          {/* Tables Grid */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-folder-open text-brand-500"></i>
+                Daftar Tabel Database
+              </h2>
+              <button onClick={onNewTable} className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline">
+                + Tambah Tabel Baru
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tables.map(tbl => (
+                <div 
+                  key={tbl.id}
+                  onClick={() => onSelectTable(tbl.id)}
+                  className="group bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs hover:shadow-md hover:border-brand-500/50 cursor-pointer transition flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-slate-700 text-brand-600 dark:text-brand-300 flex items-center justify-center text-lg">
+                        <i className={`fa-solid ${tbl.icon || 'fa-table'}`}></i>
+                      </div>
+                      <span className="text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full">
+                        {tbl.rows.length} Baris
+                      </span>
+                    </div>
+
+                    <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">
+                      {tbl.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+                      {tbl.description || 'Tidak ada deskripsi.'}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-400">
+                    <span>{tbl.columns.length} Kolom Format</span>
+                    <span className="text-brand-600 dark:text-brand-400 font-medium group-hover:translate-x-1 transition-transform">
+                      Buka Tabel <i className="fa-solid fa-arrow-right ml-1"></i>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- ACTIVE TABLE VIEW (TABLE, CARD, KANBAN) ---
+    function ActiveTableView({
+      table,
+      viewMode,
+      setViewMode,
+      tableSearch,
+      setTableSearch,
+      selectedRowIds,
+      setSelectedRowIds,
+      onAddRecord,
+      onEditRecord,
+      onDetailRecord,
+      onDeleteRecord,
+      onBulkDelete,
+      onEditSchema,
+      onDeleteTable
+    }) {
+      const [sortCol, setSortCol] = useState(null);
+      const [sortDir, setSortDir] = useState('asc');
+      const [kanbanColId, setKanbanColId] = useState(() => {
+        const selectCol = table.columns.find(c => c.type === 'Status' || c.type === 'Pilihan');
+        return selectCol ? selectCol.id : table.columns[0]?.id;
+      });
+
+      // Update kanban default field if column deleted
+      useEffect(() => {
+        const selectCol = table.columns.find(c => c.type === 'Status' || c.type === 'Pilihan');
+        setKanbanColId(selectCol ? selectCol.id : table.columns[0]?.id);
+      }, [table]);
+
+      // Filtered & Sorted Rows
+      const filteredRows = useMemo(() => {
+        return table.rows.filter(row => {
+          if (!tableSearch) return true;
+          return Object.values(row).some(val => 
+            String(val).toLowerCase().includes(tableSearch.toLowerCase())
+          );
+        }).sort((a, b) => {
+          if (!sortCol) return 0;
+          const valA = a[sortCol] ?? '';
+          const valB = b[sortCol] ?? '';
+          if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+          if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }, [table.rows, tableSearch, sortCol, sortDir]);
+
+      const handleSort = (colId) => {
+        if (sortCol === colId) {
+          setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+          setSortCol(colId);
+          setSortDir('asc');
+        }
+      };
+
+      const toggleSelectAll = () => {
+        if (selectedRowIds.length === filteredRows.length) {
+          setSelectedRowIds([]);
+        } else {
+          setSelectedRowIds(filteredRows.map(r => r.id));
+        }
+      };
+
+      const toggleSelectRow = (id) => {
+        setSelectedRowIds(prev => 
+          prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+      };
+
+      return (
+        <div className="flex-1 flex flex-col h-full overflow-hidden">
+          {/* TABLE TOP BAR */}
+          <div className="p-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+            {/* Title & Info */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-slate-700 text-brand-600 dark:text-brand-300 flex items-center justify-center text-lg">
+                <i className={`fa-solid ${table.icon || 'fa-table'}`}></i>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-bold text-lg text-slate-900 dark:text-white">{table.name}</h1>
+                  <button 
+                    onClick={onEditSchema}
+                    className="text-xs text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 px-1.5 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+                    title="Pengaturan Skema Kolom"
+                  >
+                    <i className="fa-solid fa-gear mr-1"></i> Edit Skema
+                  </button>
+                  <button 
+                    onClick={onDeleteTable}
+                    className="text-xs text-rose-400 hover:text-rose-600 px-1.5 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                    title="Hapus Tabel Ini"
+                  >
+                    <i className="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{table.description || 'Kelola entry data Anda secara visual.'}</p>
+              </div>
+            </div>
+
+            {/* View Switchers & Primary Action */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* View Switcher */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl border border-slate-200 dark:border-slate-600">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition ${
+                    viewMode === 'table' ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-300 shadow-xs' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  <i className="fa-solid fa-table-cells"></i> Tabel
+                </button>
+                <button
+                  onClick={() => setViewMode('card')}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition ${
+                    viewMode === 'card' ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-300 shadow-xs' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  <i className="fa-solid fa-border-all"></i> Kartu
+                </button>
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition ${
+                    viewMode === 'kanban' ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-300 shadow-xs' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  <i className="fa-solid fa-[#fa-bars-staggered] fa-bars-staggered"></i> Kanban
+                </button>
+              </div>
+
+              {/* Add Record */}
+              <button
+                onClick={onAddRecord}
+                className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+              >
+                <i className="fa-solid fa-plus"></i>
+                <span>Tambah Entry Data</span>
+              </button>
+            </div>
+          </div>
+
+          {/* TABLE CONTROLS BAR (Search & Bulk Delete) */}
+          <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700/60 flex items-center justify-between gap-3 text-xs shrink-0">
+            <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="relative w-full">
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
+                <input
+                  type="text"
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                  placeholder={`Cari data di ${table.name}...`}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {selectedRowIds.length > 0 && (
+                <button
+                  onClick={onBulkDelete}
+                  className="bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-lg font-semibold hover:bg-rose-100 transition flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-trash-can"></i>
+                  <span>Hapus ({selectedRowIds.length})</span>
+                </button>
+              )}
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Total: <strong className="text-slate-800 dark:text-slate-200">{filteredRows.length}</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* VIEW RENDERER */}
+          <div className="flex-1 overflow-auto p-4">
+            
+            {/* 1. TABLE VIEW MODE */}
+            {viewMode === 'table' && (
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                      <tr>
+                        <th className="p-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={filteredRows.length > 0 && selectedRowIds.length === filteredRows.length}
+                            onChange={toggleSelectAll}
+                            className="rounded text-brand-600 focus:ring-brand-500"
+                          />
+                        </th>
+                        {table.columns.map(col => (
+                          <th 
+                            key={col.id} 
+                            onClick={() => handleSort(col.id)}
+                            className="p-3 cursor-pointer hover:text-slate-800 dark:hover:text-slate-200 transition select-none"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>{col.label}</span>
+                              {sortCol === col.id ? (
+                                <i className={`fa-solid fa-arrow-${sortDir === 'asc' ? 'up' : 'down'} text-brand-600`}></i>
+                              ) : (
+                                <i className="fa-solid fa-sort text-slate-300 dark:text-slate-600"></i>
+                              )}
+                            </div>
+                          </th>
+                        ))}
+                        <th className="p-3 w-24 text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+                      {filteredRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={table.columns.length + 2} className="p-8 text-center text-slate-400">
+                            <i className="fa-solid fa-folder-open text-3xl mb-2 text-slate-300 dark:text-slate-600"></i>
+                            <p>Tidak ada data ditemukan.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRows.map(row => (
+                          <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition">
+                            <td className="p-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedRowIds.includes(row.id)}
+                                onChange={() => toggleSelectRow(row.id)}
+                                className="rounded text-brand-600 focus:ring-brand-500"
+                              />
+                            </td>
+                            {table.columns.map(col => (
+                              <td key={col.id} className="p-3 text-slate-700 dark:text-slate-200">
+                                <CellRenderer col={col} value={row[col.id]} row={row} />
+                              </td>
+                            ))}
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => onDetailRecord(row)}
+                                  className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-brand-600"
+                                  title="Lihat Detail"
+                                >
+                                  <i className="fa-solid fa-eye"></i>
+                                </button>
+                                <button
+                                  onClick={() => onEditRecord(row)}
+                                  className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hover:text-indigo-600"
+                                  title="Edit Entry"
+                                >
+                                  <i className="fa-solid fa-pen"></i>
+                                </button>
+                                <button
+                                  onClick={() => onDeleteRecord(row.id)}
+                                  className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-600"
+                                  title="Hapus"
+                                >
+                                  <i className="fa-solid fa-trash-can"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 2. CARD VIEW MODE */}
+            {viewMode === 'card' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredRows.length === 0 ? (
+                  <div className="col-span-full p-12 text-center text-slate-400">
+                    <p>Tidak ada data ditemukan.</p>
+                  </div>
+                ) : (
+                  filteredRows.map(row => {
+                    // Find image column if any
+                    const imgCol = table.columns.find(c => c.type === 'URL Gambar');
+                    const titleCol = table.columns[0];
+
+                    return (
+                      <div key={row.id} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs p-4 flex flex-col justify-between hover:shadow-md transition">
+                        <div>
+                          {imgCol && row[imgCol.id] && (
+                            <img 
+                              src={row[imgCol.id]} 
+                              alt="Thumbnail" 
+                              className="w-full h-32 object-cover rounded-xl mb-3 bg-slate-100 dark:bg-slate-700" 
+                              onError={(e) => { e.target.src = 'https://placehold.co/300x150/e2e8f0/64748b?text=No+Image'; }}
+                            />
+                          )}
+
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <h3 className="font-bold text-slate-900 dark:text-white text-sm line-clamp-1">
+                              {row[titleCol?.id] || 'Tanpa Judul'}
+                            </h3>
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            {table.columns.slice(1, 5).map(col => (
+                              <div key={col.id} className="flex justify-between items-center gap-2 border-b border-slate-50 dark:border-slate-700/40 pb-1.5">
+                                <span className="text-slate-400 shrink-0">{col.label}:</span>
+                                <span className="font-medium text-slate-700 dark:text-slate-200 truncate">
+                                  <CellRenderer col={col} value={row[col.id]} row={row} />
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs">
+                          <button onClick={() => onDetailRecord(row)} className="text-brand-600 dark:text-brand-400 font-semibold hover:underline">
+                            Detail Data
+                          </button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => onEditRecord(row)} className="p-1 rounded text-slate-400 hover:text-brand-600">
+                              <i className="fa-solid fa-pen"></i>
+                            </button>
+                            <button onClick={() => onDeleteRecord(row.id)} className="p-1 rounded text-slate-400 hover:text-rose-600">
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* 3. KANBAN BOARD MODE */}
+            {viewMode === 'kanban' && (
+              <div className="space-y-4">
+                {/* Select Grouping Column */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-500 font-medium">Grup berdasarkan kolom:</span>
+                  <select
+                    value={kanbanColId}
+                    onChange={(e) => setKanbanColId(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-semibold"
+                  >
+                    {table.columns.map(c => (
+                      <option key={c.id} value={c.id}>{c.label} ({c.type})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <KanbanBoard 
+                  table={table}
+                  groupColId={kanbanColId}
+                  filteredRows={filteredRows}
+                  onEditRecord={onEditRecord}
+                  onDetailRecord={onDetailRecord}
+                />
+              </div>
+            )}
+
+          </div>
+        </div>
+      );
+    }
+
+    // --- CELL RENDERER FOR DYNAMIC DATA TYPES ---
+    function CellRenderer({ col, value, row }) {
+      if (value === undefined || value === null || value === '') {
+        return <span className="text-slate-300 dark:text-slate-600 font-normal">-</span>;
+      }
+
+      switch (col.type) {
+        case 'Status':
+        case 'Pilihan':
+          return (
+            <span className={`inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${getBadgeStyle(value)}`}>
+              {value}
+            </span>
+          );
+        case 'Angka':
+          if (col.label.toLowerCase().includes('harga') || col.label.toLowerCase().includes('rp')) {
+            return <span className="font-semibold">{Number(value).toLocaleString('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })}</span>;
+          }
+          return <span className="font-semibold">{Number(value).toLocaleString('id-ID')}</span>;
+        case 'Checklist':
+          return (
+            <span className={`inline-flex items-center gap-1 font-semibold ${value ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+              <i className={`fa-solid ${value ? 'fa-circle-check text-base' : 'fa-circle-xmark text-base'}`}></i>
+              {value ? 'Ya' : 'Tidak'}
+            </span>
+          );
+        case 'URL Gambar':
+          return (
+            <img 
+              src={value} 
+              alt="Thumbnail" 
+              className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700 bg-slate-100" 
+              onError={(e) => { e.target.src = 'https://placehold.co/100x100/e2e8f0/64748b?text=Err'; }}
+            />
+          );
+        case 'Email':
+          return (
+            <a href={`mailto:${value}`} className="text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1">
+              <i className="fa-regular fa-envelope text-[10px]"></i> {value}
+            </a>
+          );
+        case 'Telepon':
+          return (
+            <a href={`tel:${value}`} className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
+              <i className="fa-solid fa-phone text-[10px]"></i> {value}
+            </a>
+          );
+        case 'Tanggal':
+          return (
+            <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+              <i className="fa-regular fa-calendar text-[10px] text-slate-400"></i> {value}
+            </span>
+          );
+        default:
+          return <span>{String(value)}</span>;
+      }
+    }
+
+    // --- KANBAN BOARD COMPONENT ---
+    function KanbanBoard({ table, groupColId, filteredRows, onEditRecord, onDetailRecord }) {
+      const groupCol = table.columns.find(c => c.id === groupColId);
+      
+      // Determine unique values/columns for kanban
+      const columnsList = useMemo(() => {
+        if (groupCol && groupCol.options && groupCol.options.length > 0) {
+          return groupCol.options;
+        }
+        const set = new Set(filteredRows.map(r => String(r[groupColId] || 'Lainnya')));
+        return Array.from(set);
+      }, [groupCol, filteredRows, groupColId]);
+
+      return (
+        <div className="flex gap-4 overflow-x-auto pb-4 items-start">
+          {columnsList.map(colName => {
+            const items = filteredRows.filter(r => String(r[groupColId] || 'Lainnya') === colName);
+            const titleCol = table.columns[0];
+
+            return (
+              <div key={colName} className="w-72 shrink-0 bg-slate-100 dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-200 dark:border-slate-700/80 flex flex-col max-h-[calc(100vh-250px)]">
+                {/* Kanban Column Header */}
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${getBadgeStyle(colName)}`}>
+                      {colName}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-400">{items.length}</span>
+                </div>
+
+                {/* Cards Container */}
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                  {items.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
+                      Kosong
+                    </div>
+                  ) : (
+                    items.map(item => (
+                      <div 
+                        key={item.id} 
+                        onClick={() => onDetailRecord(item)}
+                        className="bg-white dark:bg-slate-700/90 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 shadow-2xs hover:shadow-md hover:border-brand-500 cursor-pointer transition space-y-2"
+                      >
+                        <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                          {item[titleCol?.id] || 'Tanpa Judul'}
+                        </h4>
+
+                        <div className="space-y-1 text-[11px] text-slate-500 dark:text-slate-300">
+                          {table.columns.slice(1, 4).filter(c => c.id !== groupColId).map(c => (
+                            <div key={c.id} className="truncate">
+                              <span className="text-slate-400">{c.label}:</span> <CellRenderer col={c} value={item[c.id]} row={item} />
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-600/60 flex items-center justify-end gap-1">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onEditRecord(item); }}
+                            className="p-1 text-slate-400 hover:text-brand-600 text-xs"
+                          >
+                            <i className="fa-solid fa-pen"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // --- ANALYTICS & VISUALIZATIONS VIEW ---
+    function AnalyticsView({ tables, activeTableId, setActiveTableId }) {
+      const activeTable = tables.find(t => t.id === activeTableId) || tables[0];
+      const chartRef1 = useRef(null);
+      const chartRef2 = useRef(null);
+      const instance1 = useRef(null);
+      const instance2 = useRef(null);
+
+      // Aggregate Numerical Fields
+      const numericStats = useMemo(() => {
+        if (!activeTable) return [];
+        const numCols = activeTable.columns.filter(c => c.type === 'Angka');
+        return numCols.map(col => {
+          const vals = activeTable.rows.map(r => Number(r[col.id]) || 0);
+          const total = vals.reduce((a, b) => a + b, 0);
+          const avg = vals.length ? (total / vals.length) : 0;
+          return { label: col.label, total, avg, max: Math.max(...vals, 0), min: Math.min(...vals, 0) };
+        });
+      }, [activeTable]);
+
+      // Render Charts with Chart.js
+      useEffect(() => {
+        if (!activeTable) return;
+
+        // Chart 1: Categorical Distribution
+        const statusCol = activeTable.columns.find(c => c.type === 'Status' || c.type === 'Pilihan') || activeTable.columns[0];
+        if (chartRef1.current && statusCol) {
+          if (instance1.current) instance1.current.destroy();
+
+          const counts = {};
+          activeTable.rows.forEach(r => {
+            const k = String(r[statusCol.id] || 'Belum diisi');
+            counts[k] = (counts[k] || 0) + 1;
+          });
+
+          const ctx1 = chartRef1.current.getContext('2d');
+          instance1.current = new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+              labels: Object.keys(counts),
+              datasets: [{
+                data: Object.values(counts),
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: 'bottom' }
+              }
+            }
+          });
+        }
+
+        // Chart 2: Records Overview across All Tables
+        if (chartRef2.current) {
+          if (instance2.current) instance2.current.destroy();
+
+          const ctx2 = chartRef2.current.getContext('2d');
+          instance2.current = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+              labels: tables.map(t => t.name),
+              datasets: [{
+                label: 'Jumlah Baris Data',
+                data: tables.map(t => t.rows.length),
+                backgroundColor: '#4f46e5',
+                borderRadius: 8
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
+              }
+            }
+          });
+        }
+
+        return () => {
+          if (instance1.current) instance1.current.destroy();
+          if (instance2.current) instance2.current.destroy();
+        };
+      }, [activeTable, tables]);
+
+      return (
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-chart-pie text-emerald-500"></i>
+                Visualisasi Data & Analytics
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Analisis otomatis grafik distribusi dan statistik agregat nilai numerik.
+              </p>
+            </div>
+
+            {/* Target Table Selector */}
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+              <span className="text-xs font-semibold text-slate-500">Pilih Tabel:</span>
+              <select
+                value={activeTableId}
+                onChange={(e) => setActiveTableId(e.target.value)}
+                className="bg-transparent font-bold text-xs text-slate-800 dark:text-slate-100 focus:outline-none"
+              >
+                {tables.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Numeric Aggregations */}
+          {numericStats.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {numericStats.map((stat, idx) => (
+                <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs space-y-2">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {stat.total.toLocaleString('id-ID')}
+                  </h3>
+                  <div className="flex justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <span>Rata-rata: <strong>{Math.round(stat.avg).toLocaleString('id-ID')}</strong></span>
+                    <span>Max: <strong>{stat.max.toLocaleString('id-ID')}</strong></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Chart 1 */}
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col">
+              <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-4">
+                Distribusi Kategori / Status ({activeTable?.name})
+              </h3>
+              <div className="relative h-64 w-full flex-1">
+                <canvas ref={chartRef1}></canvas>
+              </div>
+            </div>
+
+            {/* Chart 2 */}
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col">
+              <h3 className="font-bold text-sm text-slate-800 dark:text-white mb-4">
+                Perbandingan Volume Data per Tabel
+              </h3>
+              <div className="relative h-64 w-full flex-1">
+                <canvas ref={chartRef2}></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- GLOBAL SEARCH RESULTS OVERLAY ---
+    function GlobalSearchResults({ query, tables, onSelectRecord }) {
+      const results = useMemo(() => {
+        const q = query.toLowerCase();
+        const matches = [];
+        tables.forEach(table => {
+          table.rows.forEach(row => {
+            const hasMatch = Object.values(row).some(v => String(v).toLowerCase().includes(q));
+            if (hasMatch) {
+              matches.push({ table, row });
+            }
+          });
+        });
+        return matches;
+      }, [query, tables]);
+
+      return (
+        <div className="p-6 max-w-5xl mx-auto w-full space-y-4">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            Hasil Pencarian Cepat untuk "{query}": <span className="text-brand-600">({results.length} ditemukan)</span>
+          </h2>
+
+          {results.length === 0 ? (
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 text-center text-slate-400">
+              <p>Tidak ada data yang cocok di seluruh database Anda.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {results.map(({ table, row }, idx) => (
+                <div 
+                  key={idx}
+                  onClick={() => onSelectRecord(table.id, row)}
+                  className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-500 cursor-pointer transition flex items-center justify-between"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-300 px-2 py-0.5 rounded-md">
+                      Tabel: {table.name}
+                    </span>
+                    <h4 className="font-bold text-sm text-slate-800 dark:text-white">
+                      {Object.values(row)[1] || 'Entry Record'}
+                    </h4>
+                    <p className="text-xs text-slate-500 line-clamp-1">
+                      {Object.entries(row).filter(([k]) => k !== 'id').map(([k, v]) => `${k}: ${v}`).join(' | ')}
+                    </p>
+                  </div>
+                  <i className="fa-solid fa-chevron-right text-slate-400"></i>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // --- SCHEMA BUILDER MODAL ---
+    function SchemaModal({ table, onClose, onSave }) {
+      const [name, setName] = useState(table ? table.name : '');
+      const [description, setDescription] = useState(table ? table.description : '');
+      const [icon, setIcon] = useState(table ? table.icon : 'fa-table');
+      const [columns, setColumns] = useState(table ? table.columns : [
+        { id: 'nama', label: 'Nama', type: 'Teks', required: true }
+      ]);
+
+      const handleAddColumn = () => {
+        const id = 'col_' + Date.now();
+        setColumns(prev => [...prev, { id, label: 'Kolom Baru', type: 'Teks', required: false, options: [] }]);
+      };
+
+      const handleColumnChange = (index, field, value) => {
+        setColumns(prev => prev.map((col, i) => {
+          if (i === index) {
+            const updated = { ...col, [field]: value };
+            if (field === 'label' && !table) {
+              updated.id = value.toLowerCase().replace(/[^a-z0-0]/g, '_');
+            }
+            return updated;
+          }
+          return col;
+        }));
+      };
+
+      const handleRemoveColumn = (index) => {
+        if (columns.length <= 1) {
+          alert('Tabel harus memiliki minimal 1 kolom!');
+          return;
+        }
+        setColumns(prev => prev.filter((_, i) => i !== index));
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return alert('Nama tabel wajib diisi!');
+        onSave({
+          id: table ? table.id : undefined,
+          name,
+          description,
+          icon,
+          columns
+        });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-2xl my-8 overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-sliders text-brand-600"></i>
+                {table ? 'Edit Skema Tabel' : 'Buat Tabel Baru'}
+              </h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+              {/* Table Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Nama Tabel *</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Contoh: Modul Keuangan"
+                    required
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Ikon FontAwesome</label>
+                  <input
+                    type="text"
+                    value={icon}
+                    onChange={(e) => setIcon(e.target.value)}
+                    placeholder="fa-table"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-3 space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Deskripsi Singkat</label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Deskripsi fungsi database..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Columns Builder */}
+              <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 dark:text-white uppercase tracking-wider text-[11px]">
+                    Definisi Kolom Skema
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddColumn}
+                    className="text-brand-600 dark:text-brand-400 font-bold hover:underline"
+                  >
+                    + Tambah Kolom
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {columns.map((col, idx) => (
+                    <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={col.label}
+                          onChange={(e) => handleColumnChange(idx, 'label', e.target.value)}
+                          placeholder="Label Kolom"
+                          className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600"
+                        />
+
+                        <select
+                          value={col.type}
+                          onChange={(e) => handleColumnChange(idx, 'type', e.target.value)}
+                          className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 font-medium"
+                        >
+                          <option value="Teks">Teks</option>
+                          <option value="Angka">Angka</option>
+                          <option value="Tanggal">Tanggal</option>
+                          <option value="Pilihan">Pilihan Dropdown</option>
+                          <option value="Status">Status Badge</option>
+                          <option value="Email">Email</option>
+                          <option value="Telepon">Telepon</option>
+                          <option value="Checklist">Checklist (Ya/Tidak)</option>
+                          <option value="URL Gambar">URL Gambar</option>
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveColumn(idx)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg"
+                        >
+                          <i className="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
+
+                      {/* Options input if dropdown or status */}
+                      {(col.type === 'Pilihan' || col.type === 'Status') && (
+                        <div>
+                          <input
+                            type="text"
+                            value={Array.isArray(col.options) ? col.options.join(', ') : (col.options || '')}
+                            onChange={(e) => handleColumnChange(idx, 'options', e.target.value.split(',').map(s => s.trim()))}
+                            placeholder="Opsi pilihan dipisahkan koma (e.g. Aktif, Pending, Nonaktif)"
+                            className="w-full px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-[11px]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-md"
+                >
+                  Simpan Skema
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      );
+    }
+
+    // --- RECORD FORM MODAL (CREATE / EDIT DATA) ---
+    function RecordModal({ table, record, onClose, onSave }) {
+      const [formData, setFormData] = useState(() => {
+        if (record) return { ...record };
+        const init = {};
+        table.columns.forEach(col => {
+          if (col.type === 'Checklist') init[col.id] = false;
+          else if (col.type === 'Status' || col.type === 'Pilihan') {
+            init[col.id] = col.options?.[0] || '';
+          } else init[col.id] = '';
+        });
+        return init;
+      });
+
+      const handleChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(formData);
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-xl my-8 overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-pen-to-square text-brand-600"></i>
+                {record ? 'Edit Entry Data' : 'Tambah Entry Data Baru'}
+              </h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+              {table.columns.map(col => (
+                <div key={col.id} className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                    <span>{col.label} {col.required && <span className="text-rose-500">*</span>}</span>
+                    <span className="text-[10px] font-normal text-slate-400">({col.type})</span>
+                  </label>
+
+                  {col.type === 'Pilihan' || col.type === 'Status' ? (
+                    <select
+                      value={formData[col.id] || ''}
+                      onChange={(e) => handleChange(col.id, e.target.value)}
+                      required={col.required}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-semibold"
+                    >
+                      {col.options?.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : col.type === 'Checklist' ? (
+                    <label className="flex items-center gap-2 cursor-pointer p-2 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={!!formData[col.id]}
+                        onChange={(e) => handleChange(col.id, e.target.checked)}
+                        className="rounded text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="font-medium text-slate-700 dark:text-slate-200">Ya, tandai dicentang</span>
+                    </label>
+                  ) : (
+                    <input
+                      type={col.type === 'Angka' ? 'number' : col.type === 'Tanggal' ? 'date' : col.type === 'Email' ? 'email' : 'text'}
+                      value={formData[col.id] || ''}
+                      onChange={(e) => handleChange(col.id, e.target.value)}
+                      required={col.required}
+                      placeholder={`Masukkan ${col.label.toLowerCase()}...`}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                    />
+                  )}
+                </div>
+              ))}
+
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-md"
+                >
+                  Simpan Data
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      );
+    }
+
+    // --- RECORD DETAIL VIEW MODAL ---
+    function RecordDetailModal({ table, record, onClose, onEdit, onDelete }) {
+      const imgCol = table.columns.find(c => c.type === 'URL Gambar');
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-lg my-8 overflow-hidden flex flex-col">
+            
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-circle-info text-brand-600"></i>
+                Detail Entry Record
+              </h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto text-xs">
+              {imgCol && record[imgCol.id] && (
+                <img 
+                  src={record[imgCol.id]} 
+                  alt="Detail" 
+                  className="w-full h-48 object-cover rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100" 
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              )}
+
+              <div className="space-y-3">
+                {table.columns.map(col => (
+                  <div key={col.id} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
+                    <span className="font-semibold text-slate-500 dark:text-slate-400">{col.label}:</span>
+                    <span className="font-bold text-slate-800 dark:text-white">
+                      <CellRenderer col={col} value={record[col.id]} row={record} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <button
+                  onClick={onDelete}
+                  className="text-rose-600 dark:text-rose-400 font-semibold hover:underline"
+                >
+                  <i className="fa-solid fa-trash mr-1"></i> Hapus Entry
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    onClick={onEdit}
+                    className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-md"
+                  >
+                    Edit Data
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // --- STARTER TEMPLATES MODAL ---
+    function TemplateModal({ templates, onClose, onSelect }) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-2xl my-8 overflow-hidden flex flex-col">
+            
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-cubes text-brand-600"></i>
+                Starter Database Templates
+              </h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto text-xs">
+              <p className="text-slate-500">
+                Pilih template siap pakai dengan skema kolom & sampel data realistis:
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {templates.map(tpl => (
+                  <div key={tpl.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <i className={`fa-solid ${tpl.icon} text-lg text-brand-600`}></i>
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white">{tpl.name}</h4>
+                      </div>
+                      <p className="text-slate-500 dark:text-slate-400 text-xs">{tpl.description}</p>
+                    </div>
+
+                    <button
+                      onClick={() => onSelect(tpl)}
+                      className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold transition shadow-sm"
+                    >
+                      Gunakan Template Ini
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // --- IMPORT / EXPORT MODAL ---
+    function ExportImportModal({ tables, activeTable, onClose, onImportTable }) {
+      const [tab, setTab] = useState('export'); // 'export' | 'import'
+      const [importJson, setImportJson] = useState('');
+
+      const handleExportJSON = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tables, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `databaseku_backup_${Date.now()}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      };
+
+      const handleExportCSV = () => {
+        if (!activeTable) return;
+        const headers = activeTable.columns.map(c => c.label).join(',');
+        const rows = activeTable.rows.map(r => 
+          activeTable.columns.map(c => `"${String(r[c.id] || '').replace(/"/g, '""')}"`).join(',')
+        ).join('\n');
+        
+        const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(`${headers}\n${rows}`);
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", csvContent);
+        downloadAnchor.setAttribute("download", `${activeTable.id}_export.csv`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      };
+
+      const handleImportSubmit = (e) => {
+        e.preventDefault();
+        try {
+          const parsed = JSON.parse(importJson);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(t => onImportTable(t));
+          } else if (parsed.name && parsed.columns) {
+            onImportTable(parsed);
+          } else {
+            alert('Format JSON tidak valid!');
+          }
+          onClose();
+        } catch (err) {
+          alert('JSON tidak dapat dibaca: ' + err.message);
+        }
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-lg my-8 overflow-hidden flex flex-col">
+            
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setTab('export')}
+                  className={`font-bold text-sm px-3 py-1 rounded-lg ${tab === 'export' ? 'bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300' : 'text-slate-400'}`}
+                >
+                  Export Data
+                </button>
+                <button
+                  onClick={() => setTab('import')}
+                  className={`font-bold text-sm px-3 py-1 rounded-lg ${tab === 'import' ? 'bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300' : 'text-slate-400'}`}
+                >
+                  Import JSON
+                </button>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto text-xs">
+              {tab === 'export' ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-200 dark:border-slate-600 space-y-2">
+                    <h4 className="font-bold text-slate-800 dark:text-white">Export Seluruh Database (JSON)</h4>
+                    <p className="text-slate-500">Unduh seluruh tabel dan data dalam satu file JSON backup.</p>
+                    <button
+                      onClick={handleExportJSON}
+                      className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold"
+                    >
+                      <i className="fa-solid fa-download mr-1.5"></i> Download JSON Backup
+                    </button>
+                  </div>
+
+                  {activeTable && (
+                    <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-200 dark:border-slate-600 space-y-2">
+                      <h4 className="font-bold text-slate-800 dark:text-white">Export Tabel Aktif ("{activeTable.name}") (CSV)</h4>
+                      <p className="text-slate-500">Unduh data tabel aktif ke format spreadsheet Excel/CSV.</p>
+                      <button
+                        onClick={handleExportCSV}
+                        className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                      >
+                        <i className="fa-solid fa-file-csv mr-1.5"></i> Download File CSV
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <form onSubmit={handleImportSubmit} className="space-y-3">
+                  <label className="font-bold text-slate-700 dark:text-slate-300">Tempelkan Struktur JSON Tabel:</label>
+                  <textarea
+                    rows={8}
+                    value={importJson}
+                    onChange={(e) => setImportJson(e.target.value)}
+                    placeholder='{"name": "Tabel Baru", "columns": [...], "rows": [...]}'
+                    className="w-full p-3 font-mono text-[11px] rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600"
+                  ></textarea>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="px-4 py-2 rounded-xl text-slate-600 font-semibold"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold shadow-md"
+                    >
+                      Import Sekarang
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // --- MOUNT REACT APP ---
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
